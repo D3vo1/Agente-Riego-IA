@@ -1,6 +1,6 @@
 # 🌱 AgroRiego — Agente Inteligente de Riego
 
-![Pruebas](https://github.com/D3vo1/IA-2026/actions/workflows/tests.yml/badge.svg)
+![Pruebas](https://github.com/D3vo1/Agente-Riego-IA/actions/workflows/tests.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white)
