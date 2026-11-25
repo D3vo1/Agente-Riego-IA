@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import asyncio
-from collections import defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any
 
-from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
 from app.bayes import bayes_estimator
 from app.config import Settings, settings
 from app.rag import ChromaKnowledgeBase
-from app.rules import rule_engine
+from app.rules import IrrigationFacts, IrrigationRuleEngine
 
 
 SYSTEM_PROMPT = """
@@ -39,7 +38,20 @@ Reglas obligatorias:
   recomienda detener el sistema de forma segura y solicitar revision tecnica.
 - Si faltan datos esenciales, solicita cultivo, etapa, suelo o sustrato,
   humedad, clima y sistema de riego.
+- Los hechos del analisis determinista acumulan lo que el usuario dijo en
+  mensajes anteriores de esta conversacion; no vuelvas a pedir lo que ya dio.
+- Si el cultivo no esta en la base de conocimiento, dilo y aclara que los
+  umbrales son genericos.
+- La humedad ambiental o relativa no es humedad del suelo; no las confundas.
 """.strip()
+
+
+@dataclass
+class SessionState:
+    """Memoria volatil de una conversacion: mensajes y hechos acumulados."""
+
+    messages: list[BaseMessage] = field(default_factory=list)
+    facts: IrrigationFacts = field(default_factory=IrrigationFacts)
 
 
 @dataclass
@@ -49,6 +61,8 @@ class AgentResponse:
     rules_fired: list[str] = field(default_factory=list)
     bayes_probability: float | None = None
     reasoning: list[str] = field(default_factory=list)
+    facts: dict[str, Any] = field(default_factory=dict)
+    missing_data: list[str] = field(default_factory=list)
 
 
 class AgentNotConfiguredError(RuntimeError):
@@ -62,13 +76,30 @@ class IrrigationAgent:
         self,
         config: Settings = settings,
         knowledge_base: ChromaKnowledgeBase | None = None,
+        rule_engine: IrrigationRuleEngine | None = None,
     ) -> None:
         self.config = config
         self._llm: ChatGroq | None = None
         self.knowledge_base = knowledge_base or ChromaKnowledgeBase(config.vector_db_path)
-        self._histories: dict[str, InMemoryChatMessageHistory] = defaultdict(
-            InMemoryChatMessageHistory
-        )
+        self.rule_engine = rule_engine or IrrigationRuleEngine()
+        # Orden de uso reciente: al superar max_sessions se olvida la mas antigua.
+        self._sessions: OrderedDict[str, SessionState] = OrderedDict()
+
+    def _session(self, session_id: str) -> SessionState:
+        state = self._sessions.get(session_id)
+        if state is None:
+            state = SessionState()
+            self._sessions[session_id] = state
+            while len(self._sessions) > max(1, self.config.max_sessions):
+                self._sessions.popitem(last=False)
+        else:
+            self._sessions.move_to_end(session_id)
+        return state
+
+    def set_disabled_rules(self, codes: set[str]) -> None:
+        """Aplica la configuracion de reglas que viene del servicio de gestion."""
+
+        self.rule_engine.disabled_rules = set(codes)
 
     def _get_llm(self) -> ChatGroq:
         if not self.config.groq_api_key:
@@ -93,26 +124,30 @@ class IrrigationAgent:
 
     async def chat(self, message: str, session_id: str) -> AgentResponse:
         clean_message = message.strip()
-        rules = rule_engine.evaluate(clean_message)
+        state = self._session(session_id)
+        rules = self.rule_engine.evaluate(clean_message, previous=state.facts)
         bayes = bayes_estimator.estimate(rules.facts)
 
         try:
             chunks = await asyncio.to_thread(
-                self.knowledge_base.search, clean_message, self.config.rag_top_k
+                self.knowledge_base.search,
+                clean_message,
+                self.config.rag_top_k,
+                self.config.rag_max_distance,
             )
         except RuntimeError:
             chunks = []
 
         context = self._build_context(chunks, rules, bayes)
-        history = self._histories[session_id]
-        recent_messages = history.messages[-self.config.max_history_messages :]
+        recent_messages = state.messages[-self.config.max_history_messages :]
         messages = [SystemMessage(content=f"{SYSTEM_PROMPT}\n\n{context}"), *recent_messages]
         messages.append(HumanMessage(content=clean_message))
 
         response: Any = await self._get_llm().ainvoke(messages)
         answer = response.content if isinstance(response.content, str) else str(response.content)
-        history.add_user_message(clean_message)
-        history.add_ai_message(answer)
+        state.messages.extend([HumanMessage(content=clean_message), AIMessage(content=answer)])
+        # Solo se guardan los hechos cuando el modelo respondio sin error.
+        state.facts = rules.facts
 
         sources = list(dict.fromkeys(chunk.source for chunk in chunks))
         reasoning = list(rules.recommendations)
@@ -124,20 +159,28 @@ class IrrigationAgent:
             rules_fired=rules.fired_rules,
             bayes_probability=bayes.probability,
             reasoning=reasoning,
+            facts=self._facts_summary(rules.facts),
+            missing_data=rules.missing_data,
         )
+
+    @staticmethod
+    def _facts_summary(facts: IrrigationFacts) -> dict[str, Any]:
+        return {
+            "cultivo": facts.crop,
+            "cultivo_no_reconocido": facts.unknown_crop,
+            "suelo": facts.soil,
+            "humedad_suelo": facts.moisture,
+            "humedad_ambiental": facts.air_humidity,
+            "temperatura": facts.temperature,
+            "lluvia_esperada": facts.rain_expected,
+        }
 
     @staticmethod
     def _build_context(chunks, rules, bayes) -> str:
         knowledge = "\n\n".join(
             f"[Fuente: {chunk.source}]\n{chunk.content}" for chunk in chunks
         ) or "No se recuperaron fragmentos documentales para esta consulta."
-        facts = {
-            "cultivo": rules.facts.crop,
-            "suelo": rules.facts.soil,
-            "humedad": rules.facts.moisture,
-            "temperatura": rules.facts.temperature,
-            "lluvia_esperada": rules.facts.rain_expected,
-        }
+        facts = IrrigationAgent._facts_summary(rules.facts)
         probability = (
             f"{bayes.probability * 100:.1f} %" if bayes.probability is not None else "no calculada"
         )
@@ -155,7 +198,7 @@ class IrrigationAgent:
         )
 
     def clear_history(self, session_id: str) -> bool:
-        return self._histories.pop(session_id, None) is not None
+        return self._sessions.pop(session_id, None) is not None
 
 
 agent = IrrigationAgent()

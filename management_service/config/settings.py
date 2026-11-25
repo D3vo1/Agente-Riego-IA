@@ -10,8 +10,13 @@ load_dotenv(BASE_DIR.parent / ".env")
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY", "django-insecure-entregable-2-cambiar-en-produccion"
 )
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
+DEBUG = os.getenv("DJANGO_DEBUG", "true").strip().lower() in {"1", "true", "yes", "si", "sí"}
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver").split(",")
+    if host.strip()
+]
+MANAGEMENT_API_KEY = os.getenv("MANAGEMENT_API_KEY", "").strip()
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -68,7 +73,7 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_PERMISSION_CLASSES": ["core.permissions.HasManagementApiKey"],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",

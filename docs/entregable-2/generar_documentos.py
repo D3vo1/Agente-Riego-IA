@@ -14,8 +14,8 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs" / "entregables"
+ROOT = Path(__file__).resolve().parents[2]
+OUT = ROOT / "docs" / "entregable-2"
 ASSETS = OUT / "assets"
 OUT.mkdir(parents=True, exist_ok=True)
 ASSETS.mkdir(parents=True, exist_ok=True)

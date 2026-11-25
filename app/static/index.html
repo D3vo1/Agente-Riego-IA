@@ -62,6 +62,16 @@
       if (data.bayes_probability !== null && data.bayes_probability !== undefined) {
         lines.push(`Probabilidad bayesiana demostrativa: ${(data.bayes_probability * 100).toFixed(1)} %`);
       }
+      const labels = {
+        cultivo: 'cultivo', cultivo_no_reconocido: 'cultivo no reconocido', suelo: 'suelo',
+        humedad_suelo: 'humedad del suelo', humedad_ambiental: 'humedad ambiental',
+        temperatura: 'temperatura', lluvia_esperada: 'lluvia esperada'
+      };
+      const known = Object.entries(data.facts || {})
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => `${labels[key] || key}: ${value === true ? 'sí' : value === false ? 'no' : value}`);
+      if (known.length) lines.push(`Datos considerados: ${known.join(', ')}`);
+      if (data.missing_data?.length) lines.push(`Faltan: ${data.missing_data.join(', ')}`);
       if (!lines.length) return;
       const item = document.createElement('div');
       item.className = 'evidence';

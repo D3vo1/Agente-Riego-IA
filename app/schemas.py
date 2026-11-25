@@ -1,5 +1,7 @@
 """Esquemas de entrada y salida de la API."""
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -31,6 +33,11 @@ class ChatResponse(BaseModel):
     rules_fired: list[str] = Field(default_factory=list)
     bayes_probability: float | None = None
     reasoning: list[str] = Field(default_factory=list)
+    facts: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Datos acumulados en la conversacion que usaron las reglas y Bayes.",
+    )
+    missing_data: list[str] = Field(default_factory=list)
     management_logged: bool = False
 
 

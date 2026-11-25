@@ -29,3 +29,19 @@ def test_chroma_ingestion_and_search(tmp_path: Path) -> None:
     results = database.search("humedad baja en suelo arenoso", top_k=1)
     assert results
     assert results[0].source == "riego.md"
+
+
+def test_off_topic_questions_retrieve_nothing(tmp_path: Path) -> None:
+    database = ChromaKnowledgeBase(tmp_path / "chroma", collection_name="test_off_topic")
+    database.ingest_directory(Path("knowledge"))
+    assert database.search("¿Quién ganó el mundial?", top_k=4, max_distance=0.95) == []
+    assert database.search("Cuál es la capital de Francia", top_k=4, max_distance=0.95) == []
+
+
+def test_on_topic_questions_find_the_right_document(tmp_path: Path) -> None:
+    database = ChromaKnowledgeBase(tmp_path / "chroma", collection_name="test_on_topic")
+    database.ingest_directory(Path("knowledge"))
+    results = database.search("fuga eléctrica en la bomba", top_k=4, max_distance=0.95)
+    assert results[0].source == "05_seguridad.md"
+    results = database.search("mi sensor marca valores raros", top_k=4, max_distance=0.95)
+    assert results[0].source == "04_sensores_datos.md"
