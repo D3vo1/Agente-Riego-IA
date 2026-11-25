@@ -27,6 +27,11 @@ class ChatResponse(BaseModel):
     answer: str
     session_id: str
     model: str
+    sources: list[str] = Field(default_factory=list)
+    rules_fired: list[str] = Field(default_factory=list)
+    bayes_probability: float | None = None
+    reasoning: list[str] = Field(default_factory=list)
+    management_logged: bool = False
 
 
 class HealthResponse(BaseModel):
@@ -36,6 +41,9 @@ class HealthResponse(BaseModel):
     service: str
     groq_configured: bool
     model: str
+    rag_ready: bool
+    knowledge_chunks: int
+    django_logging_enabled: bool
 
 
 class MessageResponse(BaseModel):

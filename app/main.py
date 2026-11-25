@@ -1,5 +1,6 @@
 """API FastAPI del agente conversacional de riego inteligente."""
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,16 +9,29 @@ from fastapi.responses import HTMLResponse
 
 from app.agent import AgentNotConfiguredError, agent
 from app.config import settings
+from app.management_client import management_client
 from app.schemas import ChatRequest, ChatResponse, HealthResponse, MessageResponse
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Prepara el indice documental sin impedir el arranque ante un fallo."""
+
+    try:
+        agent.ensure_knowledge_base()
+    except Exception:
+        pass
+    yield
 
 
 app = FastAPI(
     title="Agente Inteligente de Riego",
-    version="1.0.0",
+    version="2.0.0",
     description=(
-        "Microservicio académico de un agente conversacional mínimo construido "
-        "con LangChain, Groq y FastAPI. Esta versión no utiliza RAG."
+        "Microservicio academico con RAG, base vectorial Chroma, reglas de "
+        "produccion y razonamiento bayesiano."
     ),
+    lifespan=lifespan,
 )
 
 
@@ -33,11 +47,18 @@ async def home() -> HTMLResponse:
 async def health() -> HealthResponse:
     """Permite comprobar que el servicio está activo."""
 
+    try:
+        chunk_count = agent.knowledge_base.count()
+    except Exception:
+        chunk_count = 0
     return HealthResponse(
         status="ok",
         service="agente-riego-ia",
         groq_configured=bool(settings.groq_api_key),
         model=settings.groq_model,
+        rag_ready=chunk_count > 0,
+        knowledge_chunks=chunk_count,
+        django_logging_enabled=settings.django_logging_enabled,
     )
 
 
@@ -52,7 +73,7 @@ async def chat(payload: ChatRequest) -> ChatResponse:
 
     session_id = payload.session_id or str(uuid4())
     try:
-        answer = await agent.chat(payload.message, session_id)
+        result = await agent.chat(payload.message, session_id)
     except AgentNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
@@ -64,10 +85,23 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             ),
         ) from exc
 
+    logged = await management_client.log_exchange(
+        session_id=session_id,
+        question=payload.message,
+        answer=result.answer,
+        sources=result.sources,
+        rules=result.rules_fired,
+        bayes_probability=result.bayes_probability,
+    )
     return ChatResponse(
-        answer=answer,
+        answer=result.answer,
         session_id=session_id,
         model=settings.groq_model,
+        sources=result.sources,
+        rules_fired=result.rules_fired,
+        bayes_probability=result.bayes_probability,
+        reasoning=result.reasoning,
+        management_logged=logged,
     )
 
 

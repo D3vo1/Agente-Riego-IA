@@ -1,0 +1,29 @@
+
+digraph G {
+  graph [rankdir=TB, bgcolor="white", pad=0.25, nodesep=0.35, ranksep=0.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10, color="#94A3B8", fillcolor="#F8FAFC", margin="0.13,0.08"];
+  edge [color="#64748B", arrowsize=0.7, fontname="Arial", fontsize=8];
+  agente [label="Agente inteligente\nde riego", fillcolor="#DCFCE7", color="#16A34A"];
+  parcela [label="Parcela"];
+  conocimiento [label="Conocimiento"];
+  razonamiento [label="Razonamiento"];
+  cultivo [label="Cultivo"];
+  suelo [label="Suelo o sustrato"];
+  mediciones [label="Mediciones"];
+  rag [label="Documentos RAG"];
+  reglas [label="Reglas"];
+  bayes [label="Bayes"];
+  recomendacion [label="Recomendación\nexplicable", fillcolor="#DBEAFE", color="#2563EB"];
+  agente -> parcela [label="analiza"];
+  agente -> conocimiento [label="consulta"];
+  agente -> razonamiento [label="ejecuta"];
+  parcela -> cultivo [label="contiene"];
+  parcela -> suelo [label="usa"];
+  parcela -> mediciones [label="presenta"];
+  conocimiento -> rag;
+  razonamiento -> reglas;
+  razonamiento -> bayes;
+  rag -> recomendacion;
+  reglas -> recomendacion;
+  bayes -> recomendacion;
+}

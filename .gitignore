@@ -6,4 +6,8 @@ __pycache__/
 .coverage
 .idea/
 .vscode/
+data/chroma/
+management_service/db.sqlite3
+htmlcov/
+docs/qa_*/
 
