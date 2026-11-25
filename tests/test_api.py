@@ -2,9 +2,9 @@
 
 from fastapi.testclient import TestClient
 
-from app.agent import IrrigationAgent
+from app.agent import AgentResponse, IrrigationAgent
 from app.config import Settings
-from app.main import app, agent
+from app.main import app, agent, management_client
 
 
 client = TestClient(app)
@@ -28,12 +28,21 @@ def test_chat_validates_empty_message() -> None:
 
 
 def test_chat_returns_agent_response(monkeypatch) -> None:
-    async def fake_chat(message: str, session_id: str) -> str:
+    async def fake_chat(message: str, session_id: str) -> AgentResponse:
         assert message == "¿Cuándo debo regar?"
         assert session_id == "prueba"
-        return "Riega según la humedad, el cultivo y las condiciones climáticas."
+        return AgentResponse(
+            answer="Riega según la humedad, el cultivo y las condiciones climáticas.",
+            sources=["01_principios_riego.md"],
+            rules_fired=["R-HUM-01"],
+            bayes_probability=0.8,
+        )
+
+    async def fake_log_exchange(**kwargs) -> bool:
+        return True
 
     monkeypatch.setattr(agent, "chat", fake_chat)
+    monkeypatch.setattr(management_client, "log_exchange", fake_log_exchange)
     response = client.post(
         "/chat",
         json={"message": "¿Cuándo debo regar?", "session_id": "prueba"},
@@ -42,6 +51,8 @@ def test_chat_returns_agent_response(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["session_id"] == "prueba"
     assert "humedad" in response.json()["answer"]
+    assert response.json()["sources"] == ["01_principios_riego.md"]
+    assert response.json()["management_logged"] is True
 
 
 def test_clear_unknown_session() -> None:
