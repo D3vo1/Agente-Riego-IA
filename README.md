@@ -80,7 +80,7 @@ cp .env.example .env          # luego coloca tu GROQ_API_KEY en .env
 python -m uvicorn app.main:app --reload
 ```
 
-**Windows:** ejecuta `instalar.bat`, coloca tu clave en `.env` y luego ejecuta `iniciar.bat`.
+**Windows:** ejecuta `scripts\instalar.bat`, coloca tu clave en `.env` y luego ejecuta `scripts\iniciar.bat`.
 
 Abre <http://127.0.0.1:8000> para usar el chat, o <http://127.0.0.1:8000/docs> para probar la API.
 
@@ -90,17 +90,34 @@ Abre <http://127.0.0.1:8000> para usar el chat, o <http://127.0.0.1:8000/docs> p
 pytest -q
 ```
 
+## 🤝 Cómo contribuir
+
+El equipo trabaja con dos ramas principales: `main` (versiones estables) y `development` (integración). Todo cambio entra por Pull Request hacia `development`. Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de empezar.
+
+## 📁 Estructura del repositorio
+
+```text
+app/              Código del agente y la API (FastAPI)
+  static/         Interfaz web del chat
+tests/            Pruebas automatizadas (pytest)
+scripts/          Scripts de instalación y arranque para Windows
+docs/
+  actividades/    Entregables de diseño de cada actividad del curso
+  guias/          Guías de uso e instalación
+.github/          CI, plantillas de issues y Pull Requests
+```
+
 ## 📚 Documentación del curso
 
 El proyecto se desarrolló por actividades. Los entregables de diseño están en [`docs/`](docs):
 
 | # | Documento | Tema |
 |---|---|---|
-| 1 | [Fundamentos de IA](docs/01-fundamentos-ia.docx) | Historia de la IA y modelo lógico del agente (axiomas y teoremas en lógica de predicados) |
-| 2 | [Diseño del agente](docs/02-diseno-del-agente.docx) | Especificación PEAS, agente híbrido BDI y arquitectura inicial |
-| 3 | [Heurística A\*](docs/03-heuristica-a-estrella.docx) | Planificación del riego entre varias zonas con búsqueda A\* |
-| 4 | [Scrum y JIRA](docs/04-scrum-jira.docx) | Backlog, épicas, criterios de aceptación y sprints |
-| — | [Guía de instalación](docs/guia-instalacion.docx) | Instalación paso a paso |
+| 1 | [Fundamentos de IA](docs/actividades/01-fundamentos-ia.docx) | Historia de la IA y modelo lógico del agente (axiomas y teoremas en lógica de predicados) |
+| 2 | [Diseño del agente](docs/actividades/02-diseno-del-agente.docx) | Especificación PEAS, agente híbrido BDI y arquitectura inicial |
+| 3 | [Heurística A\*](docs/actividades/03-heuristica-a-estrella.docx) | Planificación del riego entre varias zonas con búsqueda A\* |
+| 4 | [Scrum y JIRA](docs/actividades/04-scrum-jira.docx) | Backlog, épicas, criterios de aceptación y sprints |
+| — | [Guía de instalación](docs/guias/guia-instalacion.docx) | Instalación paso a paso |
 
 ## 🧭 Limitaciones y siguientes pasos
 

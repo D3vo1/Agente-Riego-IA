@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0.."
 echo Creando entorno virtual...
 python -m venv .venv
 call .venv\Scripts\activate
