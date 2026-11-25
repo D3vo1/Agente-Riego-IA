@@ -1,135 +1,213 @@
 # 🌱 AgroRiego — Agente Inteligente de Riego
 
 ![Pruebas](https://github.com/D3vo1/Agente-Riego-IA/actions/workflows/tests.yml/badge.svg)
-![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Django](https://img.shields.io/badge/Django%20REST-092E20?logo=django&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white)
 
-Agente conversacional que orienta a agricultores sobre **riego inteligente y uso responsable del agua**. El agente se expone como microservicio REST con **FastAPI**, y razona con un LLM (Llama 3.3 70B) a través de **LangChain** y **Groq**. Incluye una interfaz web de chat, memoria de conversación por sesión y pruebas automatizadas.
+Proyecto académico del Entregable 2 de IA Agéntica (2026). AgroRiego combina un modelo alojado en Groq con recuperación de conocimiento, reglas explicables y un módulo probabilístico. FastAPI atiende las consultas del agente y Django REST Framework conserva conversaciones, reglas y auditoría.
 
-> Proyecto de la materia de Inteligencia Artificial (2026). El repositorio contiene el código del agente y la documentación de diseño de cada actividad del curso.
+## Funciones implementadas
 
----
+- Agente LangChain conectado con Groq.
+- Endpoint `POST /chat` y pagina web de demostracion.
+- Memoria conversacional temporal por `session_id`.
+- RAG con documentos locales y base vectorial Chroma.
+- Pipeline de ingesta, division en fragmentos y embeddings reproducibles.
+- Sistema basado en reglas para humedad, temperatura, lluvia, suelo y seguridad.
+- Estimacion bayesiana simple de necesidad de riego.
+- Fuentes, reglas y probabilidad incluidas en la respuesta JSON.
+- Microservicio Django/DRF con conversaciones, mensajes, reglas, documentos y auditoria.
+- Panel administrativo de Django.
+- Registro tolerante a fallos desde FastAPI hacia Django.
+- Pruebas automatizadas de API, RAG, reglas, Bayes y Django.
 
-## ✨ Qué hace
+### Mejoras posteriores a la entrega
 
-- **Recomendaciones de riego explicadas.** El agente justifica cada sugerencia y pide los datos que faltan (cultivo, etapa, suelo, humedad, clima, sistema de riego) antes de dar una respuesta específica.
-- **Comportamiento seguro por diseño.** El *prompt* del sistema le prohíbe inventar mediciones o afirmar que accionó válvulas, y ante fugas, riesgo eléctrico o inundación indica detener el sistema y pedir revisión técnica.
-- **Memoria por sesión.** Cada `session_id` conserva su propio historial, limitado a una ventana configurable de mensajes.
-- **API documentada.** Swagger se genera automáticamente en `/docs`.
-- **Pruebas sin costo.** Los tests sustituyen la llamada al modelo, así que no consumen la API ni necesitan una clave real.
+- **Extracción de datos más robusta.** Reconoce negaciones ("no hay lluvia esperada"), separa la humedad relativa o ambiental de la del suelo, no confunde "temporada 2026" con una temperatura, acepta plurales y acentos, y entiende "probabilidad de lluvia 80 %" o "34 °C".
+- **Regla de seguridad R-SEG-01 más amplia.** Detecta cualquier orden de abrir, encender o activar válvulas, bombas o riego, en singular o plural. No se puede desactivar.
+- **Cultivos no reconocidos.** La regla R-DAT-02 avisa cuando el cultivo no está en la base de conocimiento en lugar de ignorarlo.
+- **Datos acumulados por conversación.** El usuario puede dar cultivo, suelo y humedad en mensajes distintos; la respuesta incluye `facts` y `missing_data`.
+- **Reglas configurables desde Django.** FastAPI lee `/api/rules/` (cada `RULES_REFRESH_SECONDS`) y deja de aplicar las reglas con `enabled = false`.
+- **RAG más preciso.** Los embeddings ignoran palabras vacías y acentos, y `RAG_MAX_DISTANCE` descarta fragmentos sin relación con la pregunta.
+- **API de gestión protegida.** Con `MANAGEMENT_API_KEY` definida, Django exige la cabecera `X-API-Key`; `DJANGO_DEBUG` y `DJANGO_ALLOWED_HOSTS` se leen de `.env`.
+- **Operación.** Los fallos de arranque e integración quedan en el log, la memoria se limita a `MAX_SESSIONS` conversaciones y las dependencias tienen versiones fijas.
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```text
-Navegador (index.html) ──► FastAPI (app/main.py) ──► IrrigationAgent (app/agent.py) ──► LangChain ──► Groq (Llama 3.3 70B)
-                                  │                              │
-                           Validación con Pydantic        Historial en memoria
-                             (app/schemas.py)               por session_id
+Navegador
+   |
+   v
+FastAPI :8000 ---- LangChain ---- Groq
+   |  |                 |
+   |  +---- Reglas -----+
+   |  +---- Bayes ------+
+   |  +---- Chroma/RAG -+---- knowledge/*.md
+   |
+   +---- HTTP JSON ---- Django/DRF :8001 ---- SQLite
 ```
 
-| Componente | Archivo | Responsabilidad |
-|---|---|---|
-| API | `app/main.py` | Endpoints, manejo de errores (503 sin clave, 502 si falla el modelo) |
-| Agente | `app/agent.py` | *Prompt* del sistema, ventana de historial, llamada asíncrona al LLM |
-| Configuración | `app/config.py` | Variables de entorno (`.env`) |
-| Esquemas | `app/schemas.py` | Modelos Pydantic de petición y respuesta |
-| Interfaz | `app/static/index.html` | Chat web mínimo |
-| Pruebas | `tests/test_api.py` | Pruebas de la API con el modelo simulado |
+FastAPI puede responder aunque Django no este disponible. En ese caso, `management_logged` sera `false`, pero la conversacion no falla.
 
-## 🔌 Endpoints
+## Instalacion en Windows
 
-| Método | Ruta | Función |
-|---|---|---|
-| `GET` | `/` | Interfaz web del chatbot |
-| `GET` | `/health` | Estado del servicio y del modelo configurado |
-| `POST` | `/chat` | Enviar un mensaje al agente |
-| `DELETE` | `/chat/{session_id}` | Borrar la memoria de una sesión |
-| `GET` | `/docs` | Documentación Swagger |
+1. Clona el repositorio o extrae el ZIP.
+2. Abre PowerShell dentro de la carpeta del proyecto.
+3. Ejecuta:
 
-Ejemplo de petición a `/chat`:
+```powershell
+.\scripts\instalar.bat
+```
+
+El instalador crea `.venv`, instala dependencias, prepara SQLite, ejecuta las migraciones e indexa la carpeta `knowledge` en Chroma.
+
+4. Abre `.env` y reemplaza `GROQ_API_KEY` por una clave personal.
+5. Confirma que `GROQ_MODEL` exista en tu cuenta de Groq.
+6. Inicia ambos microservicios:
+
+```powershell
+.\scripts\iniciar_todo.bat
+```
+
+Se abre Django en una segunda terminal y FastAPI permanece en la terminal principal.
+
+## Direcciones
+
+| Servicio | Direccion |
+|---|---|
+| Chatbot | http://127.0.0.1:8000 |
+| Swagger FastAPI | http://127.0.0.1:8000/docs |
+| Salud FastAPI | http://127.0.0.1:8000/health |
+| API Django | http://127.0.0.1:8001/api/ |
+| Administracion Django | http://127.0.0.1:8001/admin/ |
+
+## Crear un administrador
+
+Con el entorno virtual activado:
+
+```powershell
+.\.venv\Scripts\python.exe management_service\manage.py createsuperuser
+```
+
+## Actualizar la base de conocimiento
+
+Agrega o edita archivos `.md` o `.txt` en `knowledge` y ejecuta:
+
+```powershell
+.\scripts\ingerir_conocimiento.bat
+```
+
+El proceso reconstruye la coleccion local. No subas `data/chroma` al repositorio; se genera nuevamente a partir de los documentos.
+
+## Ejemplo de consulta
 
 ```json
 {
-  "message": "¿Debo regar el tomate si la humedad del suelo es 18 %?",
+  "message": "Tengo jitomate en suelo arenoso, humedad 18 %, temperatura 34 y no se espera lluvia. ¿Debo regar?",
   "session_id": "demo-01"
 }
 ```
 
-Respuesta:
+La respuesta contiene:
 
 ```json
 {
-  "answer": "Respuesta generada por el agente...",
+  "answer": "Respuesta fundamentada del agente",
   "session_id": "demo-01",
-  "model": "llama-3.3-70b-versatile"
+  "model": "openai/gpt-oss-20b",
+  "sources": ["02_suelos_sustratos.md"],
+  "rules_fired": ["R-HUM-01", "R-TEMP-01", "R-CLIMA-02", "R-SUELO-01"],
+  "bayes_probability": 0.9,
+  "reasoning": ["Explicaciones del motor"],
+  "facts": {"cultivo": "tomate", "suelo": "arenoso", "humedad_suelo": 18.0, "temperatura": 34.0, "lluvia_esperada": false},
+  "missing_data": [],
+  "management_logged": true
 }
 ```
 
-## 🚀 Cómo ejecutarlo
+## Contrato entre microservicios
 
-Requisitos: Python 3.11 o 3.12 y una clave gratuita de [Groq](https://console.groq.com/keys).
+FastAPI envia a `POST http://127.0.0.1:8001/api/exchanges/`:
 
-**Linux / macOS**
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # luego coloca tu GROQ_API_KEY en .env
-python -m uvicorn app.main:app --reload
+```json
+{
+  "session_id": "demo-01",
+  "question": "Pregunta del usuario",
+  "answer": "Respuesta del agente",
+  "sources": ["archivo.md"],
+  "rules": ["R-HUM-01"],
+  "bayes_probability": 0.8
+}
 ```
 
-**Windows:** ejecuta `scripts\instalar.bat`, coloca tu clave en `.env` y luego ejecuta `scripts\iniciar.bat`.
+Django crea o recupera la conversacion, almacena dos mensajes y registra un evento de auditoria.
 
-Abre <http://127.0.0.1:8000> para usar el chat, o <http://127.0.0.1:8000/docs> para probar la API.
+## API de gestion
 
-### Pruebas
+| Metodo | Ruta | Funcion |
+|---|---|---|
+| GET/POST | `/api/conversations/` | Gestionar conversaciones |
+| GET | `/api/messages/` | Consultar mensajes |
+| GET | `/api/audit-logs/` | Consultar auditoria |
+| GET/POST | `/api/rules/` | Gestionar configuracion de reglas |
+| GET/POST | `/api/knowledge-documents/` | Registrar documentos |
+| POST | `/api/exchanges/` | Recibir una interaccion de FastAPI |
 
-```bash
-pytest -q
+## Pruebas
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe management_service\manage.py test core
 ```
 
-## 🤝 Cómo contribuir
+Las pruebas del agente no consumen la API de Groq. Para una demostracion completa si se requiere una clave valida y conexion a internet.
+
+## Estructura principal
+
+```text
+agente-riego-ia/
+├── app/                         FastAPI, agente, RAG, reglas y Bayes
+├── knowledge/                   Base documental indexable
+├── management_service/          Django y Django REST Framework
+├── tests/                       Pruebas del agente
+├── scripts/                     Instalación y arranque en Windows (.bat)
+├── docs/
+│   ├── actividades/             Entregables de diseño de las actividades 1 a 4
+│   ├── entregable-2/            Documentación del Entregable 2
+│   └── guias/                   Guías de instalación
+├── .github/                     CI y plantillas de issues y Pull Requests
+├── CONTRIBUTING.md              Flujo de ramas y reglas para contribuir
+├── .env.example
+└── requirements.txt
+```
+
+## Cómo contribuir
 
 El equipo trabaja con dos ramas principales: `main` (versiones estables) y `development` (integración). Todo cambio entra por Pull Request hacia `development`. Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de empezar.
 
-## 📁 Estructura del repositorio
+## Limitaciones
 
-```text
-app/              Código del agente y la API (FastAPI)
-  static/         Interfaz web del chat
-tests/            Pruebas automatizadas (pytest)
-scripts/          Scripts de instalación y arranque para Windows
-docs/
-  actividades/    Entregables de diseño de cada actividad del curso
-  guias/          Guías de uso e instalación
-.github/          CI, plantillas de issues y Pull Requests
-```
+- Los embeddings por hashing priorizan ejecucion local y reproducible; no sustituyen un modelo semantico entrenado para produccion.
+- Los umbrales de reglas y razones de verosimilitud de Bayes son demostrativos.
+- SQLite es apropiado para la entrega academica, no para alta concurrencia.
+- La API de gestión solo se protege con una clave compartida; no hay usuarios por agricultor.
+- La extracción de datos usa expresiones regulares; frases muy distintas a los ejemplos pueden no reconocerse.
+- El agente no controla sensores, bombas o valvulas reales ni consulta clima en tiempo real.
 
-## 📚 Documentación del curso
-
-El proyecto se desarrolló por actividades. Los entregables de diseño están en [`docs/`](docs):
+## Documentación del curso
 
 | # | Documento | Tema |
 |---|---|---|
-| 1 | [Fundamentos de IA](docs/actividades/01-fundamentos-ia.docx) | Historia de la IA y modelo lógico del agente (axiomas y teoremas en lógica de predicados) |
+| 1 | [Fundamentos de IA](docs/actividades/01-fundamentos-ia.docx) | Historia de la IA y modelo lógico del agente |
 | 2 | [Diseño del agente](docs/actividades/02-diseno-del-agente.docx) | Especificación PEAS, agente híbrido BDI y arquitectura inicial |
-| 3 | [Heurística A\*](docs/actividades/03-heuristica-a-estrella.docx) | Planificación del riego entre varias zonas con búsqueda A\* |
+| 3 | [Heurística A\*](docs/actividades/03-heuristica-a-estrella.docx) | Planificación del riego entre zonas con búsqueda A\* |
 | 4 | [Scrum y JIRA](docs/actividades/04-scrum-jira.docx) | Backlog, épicas, criterios de aceptación y sprints |
-| — | [Guía de instalación](docs/guias/guia-instalacion.docx) | Instalación paso a paso |
-
-## 🧭 Limitaciones y siguientes pasos
-
-Esta versión corresponde al primer entregable. El historial vive en memoria y se pierde al reiniciar el servidor, y el agente no lee sensores ni controla válvulas reales. Las siguientes etapas contemplan:
-
-- RAG con una base de conocimiento agronómica.
-- Integración con sensores de humedad y datos climáticos.
-- Persistencia del historial en una base de datos.
-
-## 🛠️ Tecnologías
-
-Python · FastAPI · LangChain · Groq (Llama 3.3 70B) · Pydantic · Uvicorn · Pytest · GitHub Actions
+| — | [Guía de instalación (v1)](docs/guias/guia-instalacion.docx) | Instalación del primer entregable |
+| E2 | [Documentación del Entregable 2](docs/entregable-2/Documentacion_Entregable2_AgroRiego_IA.docx) | RAG, reglas, Bayes y microservicios |
+| E2 | [Guía de instalación del Entregable 2](docs/entregable-2/Guia_Instalacion_Entregable2_AgroRiego_IA.docx) | Instalación de ambos servicios |
+| E2 | [Arquitectura](docs/entregable-2/arquitectura_entregable2.md) · [Modelo de conocimiento](docs/entregable-2/modelo_conocimiento.md) · [Sprints 3 y 4](docs/entregable-2/jira_sprints_3_4.md) | Material de apoyo |
 
 ---
 

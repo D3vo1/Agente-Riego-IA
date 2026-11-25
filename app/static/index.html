@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AgroRiego IA</title>
   <style>
-    :root { color-scheme: light; --green: #166534; --light: #f0fdf4; --line: #bbf7d0; }
+    :root { color-scheme: light; --green: #166534; --light: #f0fdf4; --line: #bbf7d0; --ink: #172033; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #172033; }
     main { max-width: 780px; min-height: 100vh; margin: auto; padding: 32px 18px; }
@@ -16,6 +16,7 @@
     .message { max-width: 82%; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; white-space: pre-wrap; line-height: 1.45; }
     .agent { background: var(--light); border: 1px solid var(--line); }
     .user { margin-left: auto; background: var(--green); color: white; }
+    .evidence { max-width: 82%; margin: -8px 0 14px; padding: 9px 12px; border-left: 3px solid #16a34a; background: #f8fafc; color: #475569; font-size: .82rem; line-height: 1.4; }
     form { display: flex; gap: 10px; padding: 14px; background: white; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 18px 18px; }
     input { flex: 1; min-width: 0; padding: 12px; border: 1px solid #94a3b8; border-radius: 10px; font-size: 1rem; }
     button { padding: 12px 18px; border: 0; border-radius: 10px; background: var(--green); color: white; font-weight: 700; cursor: pointer; }
@@ -27,7 +28,7 @@
   <main>
     <header>
       <h1>🌱 AgroRiego IA</h1>
-      <p>Asistente conversacional para orientación sobre riego inteligente</p>
+      <p>RAG · reglas explicables · razonamiento bayesiano</p>
     </header>
     <section id="messages" aria-live="polite">
       <div class="message agent">Hola. Puedo orientarte sobre humedad, horarios y sistemas de riego. ¿Qué cultivo deseas revisar?</div>
@@ -36,7 +37,7 @@
       <input id="message" maxlength="2000" autocomplete="off" placeholder="Escribe tu pregunta..." required>
       <button id="send" type="submit">Enviar</button>
     </form>
-    <footer>Prototipo académico · No controla equipos ni consulta sensores reales</footer>
+    <footer>Entregable 2 · Orientación académica; no controla equipos ni consulta sensores reales</footer>
   </main>
   <script>
     const form = document.querySelector('#chat-form');
@@ -50,6 +51,31 @@
       const item = document.createElement('div');
       item.className = `message ${role}`;
       item.textContent = text;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addEvidence(data) {
+      const lines = [];
+      if (data.sources?.length) lines.push(`Fuentes: ${data.sources.join(', ')}`);
+      if (data.rules_fired?.length) lines.push(`Reglas: ${data.rules_fired.join(', ')}`);
+      if (data.bayes_probability !== null && data.bayes_probability !== undefined) {
+        lines.push(`Probabilidad bayesiana demostrativa: ${(data.bayes_probability * 100).toFixed(1)} %`);
+      }
+      const labels = {
+        cultivo: 'cultivo', cultivo_no_reconocido: 'cultivo no reconocido', suelo: 'suelo',
+        humedad_suelo: 'humedad del suelo', humedad_ambiental: 'humedad ambiental',
+        temperatura: 'temperatura', lluvia_esperada: 'lluvia esperada'
+      };
+      const known = Object.entries(data.facts || {})
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => `${labels[key] || key}: ${value === true ? 'sí' : value === false ? 'no' : value}`);
+      if (known.length) lines.push(`Datos considerados: ${known.join(', ')}`);
+      if (data.missing_data?.length) lines.push(`Faltan: ${data.missing_data.join(', ')}`);
+      if (!lines.length) return;
+      const item = document.createElement('div');
+      item.className = 'evidence';
+      item.textContent = lines.join('\n');
       messages.appendChild(item);
       messages.scrollTop = messages.scrollHeight;
     }
@@ -69,6 +95,7 @@
         });
         const data = await response.json();
         addMessage(response.ok ? data.answer : `Error: ${data.detail}`, 'agent');
+        if (response.ok) addEvidence(data);
       } catch (_) {
         addMessage('No se pudo conectar con el servidor.', 'agent');
       } finally {
