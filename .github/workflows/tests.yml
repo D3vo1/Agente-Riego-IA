@@ -16,4 +16,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: pytest -q
+      - name: Pruebas del agente (FastAPI)
+        run: pytest -q
+      - name: Pruebas del servicio de gestion (Django)
+        working-directory: management_service
+        run: python manage.py test core

@@ -1,0 +1,23 @@
+
+digraph G {
+  graph [rankdir=LR, bgcolor="white", pad=0.3, nodesep=0.45, ranksep=0.65];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10, color="#94A3B8", fillcolor="#F8FAFC", margin="0.14,0.09"];
+  edge [color="#64748B", arrowsize=0.75, fontname="Arial", fontsize=8];
+  usuario [label="Usuario\nNavegador", fillcolor="#DBEAFE", color="#2563EB"];
+  fastapi [label="FastAPI\nPOST /chat", fillcolor="#DCFCE7", color="#16A34A"];
+  langchain [label="LangChain\ny Groq"];
+  chroma [label="Chroma\nBase vectorial"];
+  reglas [label="Motor de\nreglas"];
+  bayes [label="Módulo\nBayes"];
+  django [label="Django y DRF\nAPI de gestión", fillcolor="#FEF3C7", color="#D97706"];
+  sqlite [label="SQLite\nPersistencia"];
+  docs [label="Documentos\nknowledge"];
+  usuario -> fastapi [label="HTTP JSON"];
+  fastapi -> langchain [label="prompt + contexto"];
+  fastapi -> chroma [label="recuperación"];
+  fastapi -> reglas [label="hechos"];
+  fastapi -> bayes [label="evidencias"];
+  docs -> chroma [label="ingesta"];
+  fastapi -> django [label="registro tolerante\na fallos"];
+  django -> sqlite;
+}

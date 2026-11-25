@@ -1,0 +1,13 @@
+Summary,Issue Type,Description,Assignee,Story Points,Sprint,Status,Due Date
+"AIR-13 Crear mapa conceptual y red semantica",Task,"Modelar entidades relaciones y jerarquias del dominio. Criterio: documento completo y revisado.","Luis Gabriel Lopez Vega",5,"Sprint 3 Conocimiento y RAG",Done,2026-09-23
+"AIR-14 Preparar la base documental de riego",Task,"Crear documentos de riego suelo cultivos sensores seguridad FAQ y politica de respuesta.","Alexis Chavez Mendoza",3,"Sprint 3 Conocimiento y RAG",Done,2026-09-24
+"AIR-15 Configurar la base vectorial Chroma",Task,"Crear coleccion persistente local y configuracion reproducible.","Daniel Orlando Ceja Olloqui",5,"Sprint 3 Conocimiento y RAG",Done,2026-09-25
+"AIR-16 Implementar pipeline de ingesta",Task,"Implementar carga chunking embeddings y almacenamiento vectorial.","David Melgoza Martinez",5,"Sprint 3 Conocimiento y RAG",Done,2026-09-28
+"AIR-17 Integrar retriever RAG al agente",Task,"Recuperar contexto para POST chat y devolver fuentes utilizadas.","Luis Gabriel Lopez Vega",8,"Sprint 3 Conocimiento y RAG",Done,2026-10-01
+"AIR-18 Crear pruebas del pipeline RAG",Task,"Validar embeddings fragmentacion ingesta y busqueda.","Alexis Chavez Mendoza",3,"Sprint 3 Conocimiento y RAG",Done,2026-10-02
+"AIR-19 Implementar sistema basado en reglas",Task,"Extraer hechos activar reglas y explicar recomendaciones.","Daniel Orlando Ceja Olloqui",5,"Sprint 4 Reglas Bayes y gestion",Done,2026-10-06
+"AIR-20 Implementar modulo del Teorema de Bayes",Task,"Calcular probabilidad simple con evidencias y limitaciones.","David Melgoza Martinez",5,"Sprint 4 Reglas Bayes y gestion",Done,2026-10-06
+"AIR-21 Crear modelos y panel Django",Task,"Gestionar conversaciones mensajes reglas documentos y auditoria.","Luis Gabriel Lopez Vega",5,"Sprint 4 Reglas Bayes y gestion",Done,2026-10-07
+"AIR-22 Exponer API con Django REST Framework",Task,"Crear endpoints REST de gestion y validacion.","Alexis Chavez Mendoza",5,"Sprint 4 Reglas Bayes y gestion",Done,2026-10-08
+"AIR-23 Integrar FastAPI con Django",Task,"Registrar interacciones con tolerancia a fallos.","Daniel Orlando Ceja Olloqui",5,"Sprint 4 Reglas Bayes y gestion",Done,2026-10-08
+"AIR-24 Ejecutar pruebas y actualizar documentacion",Task,"Aprobar pruebas README arquitectura y evidencias.","David Melgoza Martinez",3,"Sprint 4 Reglas Bayes y gestion",Done,2026-10-09
