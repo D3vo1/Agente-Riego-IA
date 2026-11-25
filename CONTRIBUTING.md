@@ -37,8 +37,8 @@ Nadie hace push directo a `main` ni a `development`: GitHub lo bloquea.
    ```bash
    git push -u origin feature/mi-cambio
    ```
-6. Llena la plantilla del Pull Request, espera a que pasen las pruebas y a que alguien lo apruebe.
-7. Cuando esté aprobado, se integra con **Squash and merge** y se borra la rama.
+6. Llena la plantilla del Pull Request y espera a que pasen las pruebas.
+7. Con las pruebas en verde, se integra con **Squash and merge** y se borra la rama.
 
 Para publicar una versión, se abre un Pull Request de `development` hacia `main`.
 

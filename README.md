@@ -104,7 +104,7 @@ scripts/          Scripts de instalación y arranque para Windows
 docs/
   actividades/    Entregables de diseño de cada actividad del curso
   guias/          Guías de uso e instalación
-.github/          CI, plantillas de issues y Pull Requests, CODEOWNERS
+.github/          CI, plantillas de issues y Pull Requests
 ```
 
 ## 📚 Documentación del curso
